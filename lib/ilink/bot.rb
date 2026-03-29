@@ -6,7 +6,7 @@ module ILink
   #   bot = ILink::Bot.new(token: "your_bot_token")
   #   bot.get_updates
   #   bot.send_text(to: "user_id", text: "Hello!")
-  #   bot.upload_url(media_type: 1, to_user_id: "user_id", ...)
+  #   bot.get_upload_url(media_type: 1, to_user_id: "user_id", ...)
   #   bot.send_typing(user_id: "...", ticket: "...")
   #   bot.get_config(user_id: "...")
   #   bot.create_qr_code
@@ -36,14 +36,6 @@ module ILink
       { ret: 0, msgs: [], get_updates_buf: buf }
     end
 
-    # Send a message.
-    #
-    # @param message [Hash] a WeixinMessage hash with keys like :to_user_id, :item_list, etc.
-    # @return [Hash] parsed response
-    def send_message(message)
-      connection.post("/ilink/bot/sendmessage", { msg: message })
-    end
-
     # Convenience: send a text message to a user.
     #
     # @param to [String] target user ID
@@ -63,12 +55,20 @@ module ILink
       send_message(message)
     end
 
+    # Send a message.
+    #
+    # @param message [Hash] a WeixinMessage hash with keys like :to_user_id, :item_list, etc.
+    # @return [Hash] parsed response
+    def send_message(message)
+      connection.post("/ilink/bot/sendmessage", { msg: message })
+    end
+
     # Get a pre-signed CDN upload URL.
     #
     # @param params [Hash] :filekey, :media_type, :to_user_id, :rawsize, :rawfilemd5,
     #   :filesize, :aeskey, :thumb_rawsize, :thumb_rawfilemd5, :thumb_filesize, :no_need_thumb
     # @return [Hash] { upload_param:, thumb_upload_param:, upload_full_url: }
-    def upload_url(**params)
+    def get_upload_url(**params)
       connection.post("/ilink/bot/getuploadurl", params)
     end
 
@@ -78,7 +78,7 @@ module ILink
     # @param ticket  [String] typing ticket (from get_config)
     # @return [Hash]
     def send_typing(user_id:, ticket:)
-      set_typing(user_id: user_id, ticket: ticket, status: TypingStatus::TYPING)
+      toggle_typing(user_id: user_id, ticket: ticket, status: TypingStatus::TYPING)
     end
 
     # Cancel a typing indicator.
@@ -87,10 +87,16 @@ module ILink
     # @param ticket  [String] typing ticket
     # @return [Hash]
     def cancel_typing(user_id:, ticket:)
-      set_typing(user_id: user_id, ticket: ticket, status: TypingStatus::CANCEL)
+      toggle_typing(user_id: user_id, ticket: ticket, status: TypingStatus::CANCEL)
     end
 
-    def set_typing(user_id:, ticket:, status:)
+    # Toggle a typing indicator.
+    #
+    # @param user_id [String] ilink user ID
+    # @param ticket  [String] typing ticket
+    # @param status  [Integer] typing status (TypingStatus::TYPING or TypingStatus::CANCEL)
+    # @return [Hash]
+    def toggle_typing(user_id:, ticket:, status:)
       connection.post("/ilink/bot/sendtyping", {
         ilink_user_id: user_id,
         typing_ticket: ticket,
@@ -112,7 +118,7 @@ module ILink
     #
     # @param bot_type [String] bot type identifier (default "3")
     # @return [Hash] { qrcode:, qrcode_img_content: }
-    def qrcode(bot_type: "3")
+    def get_qrcode(bot_type: "3")
       connection.get("/ilink/bot/get_bot_qrcode?bot_type=#{URI.encode_www_form_component(bot_type)}", timeout: 5)
     end
 
@@ -120,7 +126,7 @@ module ILink
     #
     # @param qrcode [String] qrcode value from #create_qr_code
     # @return [Hash] { status:, bot_token:, ilink_bot_id:, baseurl:, ilink_user_id:, redirect_host: }
-    def qrcode_status(qrcode:)
+    def get_qrcode_status(qrcode:)
       connection.get("/ilink/bot/get_qrcode_status?qrcode=#{URI.encode_www_form_component(qrcode)}",
                       timeout: @configuration.long_poll_timeout)
     rescue Net::ReadTimeout, Net::OpenTimeout

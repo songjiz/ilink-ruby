@@ -56,12 +56,12 @@ bot = ILink::Bot.new(
 bot = ILink::Bot.new
 
 # Step 1: Get a QR code
-qr = bot.qrcode
+qr = bot.get_qrcode
 puts qr[:qrcode_img_content]  # QR code image URL — show to user
 
 # Step 2: Poll scan status (long-poll, blocks until scanned or timeout)
 loop do
-  status = bot.qrcode_status(qrcode: qr[:qrcode])
+  status = bot.get_qrcode_status(qrcode: qr[:qrcode])
   case status[:status]
   when "confirmed"
     puts "Login success!"
@@ -133,7 +133,7 @@ bot.send_message({
 ### Media Upload
 
 ```ruby
-resp = bot.upload_url(
+resp = bot.get_upload_url(
   media_type:  ILink::UploadMediaType::IMAGE,
   to_user_id:  "user_id",
   rawsize:     File.size("photo.jpg"),
